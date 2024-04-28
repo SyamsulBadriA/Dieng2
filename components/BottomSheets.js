@@ -17,7 +17,7 @@ const BottomSheets = ({ styles }) => {
             <Text style={{ fontSize: 16, fontWeight: "bold" }}>
               Lovelyo Yeremia
             </Text>
-            <Text>15 km . 90 min</Text>
+            <Text>10 km . 90 min</Text>
           </View>
         </View>
         <Avatar.Icon
