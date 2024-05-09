@@ -1,164 +1,164 @@
 import React, { useEffect, useState } from "react";
 import { Dimensions, SafeAreaView, StyleSheet, Text } from "react-native";
-import MapView, { Marker, Polyline, Callout,  Circle } from "react-native-maps";
+import MapView, { Marker, Polyline, Callout, Circle } from "react-native-maps";
 import { Appbar } from "react-native-paper";
 import BottomSheets from "../components/BottomSheets";
 import ContactSupport from "../components/ContactSupport";
-import * as Location from 'expo-location';
-import axios from 'axios';
-import * as TaskManager from 'expo-task-manager';
+import * as Location from "expo-location";
+import axios from "axios";
+import * as TaskManager from "expo-task-manager";
 
-
-const LOCATION_TASK_NAME = 'background-location-task';
-
-TaskManager.defineTask('background-location-task', async ({ data, error }) => {
-  if (error) {
-    console.error('Error in background task:', error.message);
-    return;
-  }
-
-  if (data) {
-    const { locations } = data;
-    console.log('Background locations:', locations);
-  }
-});
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
 const sendTrackingData = async (data) => {
   try {
-    const response = await axios.post('http://192.168.18.254:5000/v1/submit', data);
+    const response = await axios.post(
+      "http://192.168.0.110:50052/v1/submit",
+      data
+    );
     console.log(response.data);
   } catch (error) {
-    console.error('Kesalahan saat mengirim data tracking:', error);
+    console.error("Kesalahan saat mengirim data tracking:", error);
   }
 };
 
-export default function App() {
+export default function App({ route }) {
+  const { user, photo } = route.params;
+  console.log(user);
   const [points, setPoints] = useState([]);
-  const [points2, setPoints2] = useState([]);
+  const [pointsCheck, setPointsCheckPoint] = useState([]);
   const [visible, setVisible] = useState(false);
   const [selectedMarker, setSelectedMarker] = useState(null);
   const [location, setLocation] = useState(null);
   const [errorMsg, setErrorMsg] = useState(null);
   const [locations, setLocations] = useState([]);
+  const [isGranted, setIsGranted] = useState(false);
+  const [categoryGpx, setCategoryGpx] = useState("75_km");
   const [markers, setMarkers] = useState([]);
 
   const showModal = () => setVisible(() => !visible);
 
+  // Location Services
   useEffect(() => {
-    const getLocation = async () => {
+    const getRequestPermission = async () => {
       try {
         let { status } = await Location.requestForegroundPermissionsAsync();
-        if (status !== 'granted') {
-          setErrorMsg('Izin lokasi ditolak');
+        if (status !== "granted") {
+          setErrorMsg("Izin lokasi ditolak");
           return;
         }
-  
+        setIsGranted(true);
+        setErrorMsg(null);
+      } catch (error) {
+        setErrorMsg(error);
+      }
+    };
+
+    const getCurrentLocation = async () => {
+      try {
+        if (!isGranted) {
+          setErrorMsg("Izin lokasi ditolak");
+        }
+
         let location = await Location.getCurrentPositionAsync({});
+        console.log(location);
         setLocation(location);
         setErrorMsg(null);
       } catch (error) {
-        console.error('Kesalahan saat mendapatkan lokasi:', error);
-        setErrorMsg('Kesalahan saat mendapatkan lokasi');
+        console.error("Kesalahan saat mendapatkan lokasi:", error);
+        setErrorMsg("Kesalahan saat mendapatkan lokasi");
       }
     };
-  
-    getLocation();
-  
-  }, []);
-  
-  useEffect(() => {
+
     const getAndSendLocation = async () => {
       try {
-        let { status } = await Location.requestForegroundPermissionsAsync();
-        if (status !== 'granted') {
-          setErrorMsg('Izin lokasi ditolak');
-          return;
+        if (!isGranted) {
+          setErrorMsg("Izin lokasi ditolak");
         }
-  
-        let location = await Location.getCurrentPositionAsync({});
-        setLocation(location);
-        setErrorMsg(null);
-  
-        sendTrackingData({
-          latitude: location.coords.latitude,
-          longitude: location.coords.longitude,
-          altitude: location.coords.altitude,
-          category: '75_km',
-          email: 'viomokalu@gmail.com',
-          fullname: 'Lovelyo',
-        });
+
+        if (location != null) {
+          sendTrackingData({
+            latitude: location.coords.latitude,
+            longitude: location.coords.longitude,
+            altitude: location.coords.altitude,
+            category: "75_km",
+            email: "viomokalu@gmail.com",
+            fullname: "Lovelyo",
+          });
+        }
       } catch (error) {
-        console.error('Kesalahan saat mendapatkan lokasi:', error);
-        setErrorMsg('Kesalahan saat mendapatkan lokasi');
+        console.error("Kesalahan saat mendapatkan lokasi:", error);
+        setErrorMsg("Kesalahan saat mendapatkan lokasi");
       }
     };
-  
-    const startLocationUpdates = async () => {
-      try {
-        let { status } = await Location.requestForegroundPermissionsAsync();
-        if (status !== 'granted') {
-          setErrorMsg('Izin lokasi ditolak');
-          return;
-        }
-  
-        await Location.startLocationUpdatesAsync(LOCATION_TASK_NAME, {
-          accuracy: Location.Accuracy.High,
-          timeInterval: 10 * 1000, 
-          distanceInterval: 10, 
-          foregroundService: {
-            notificationTitle: 'Location updates enabled',
-            notificationBody: 'Tracking your location',
-          },
-        });
-      } catch (error) {
-        console.error('Error starting location updates:', error);
-        setErrorMsg('Error starting location updates');
-      }
-    };
-  
+
+    getRequestPermission();
+    getCurrentLocation();
     getAndSendLocation();
-    startLocationUpdates();
-  
+
     return () => {
       Location.stopLocationUpdatesAsync(LOCATION_TASK_NAME);
     };
   }, []);
-  
 
+  // Parsing GPX
   useEffect(() => {
     const parseGPX = async () => {
       try {
-        const gpxUrl =
-          "https://drive.google.com/uc?export=download&id=1Nq3rx6CqDcB8dQf0lOPBexSFk7Fa2uBc";
+        let categoryValue = "";
+
+        switch (categoryGpx) {
+          case "10_km":
+            categoryValue = "10 KM_TAMBI.gpx";
+            break;
+
+          case "21_km":
+            categoryValue = "21KM_TAMBI.gpx";
+            break;
+
+          case "42_km":
+            categoryValue = "42KM_TAMBI.gpx";
+            break;
+
+          case "75_km":
+            categoryValue = "75KM_TAMBI.gpx";
+            break;
+
+          default:
+            categoryValue = "10 KM_TAMBI.gpx";
+            break;
+        }
+
+        const gpxUrl = `https://assajjadazis.github.io/tracks/${categoryValue}`;
         const response = await fetch(gpxUrl);
         const gpxText = await response.text();
 
         const regex =
           /<trkpt lat="([^"]+)" lon="([^"]+)">\s*<ele>([^<]+)<\/ele>\s*<\/trkpt>/g;
-        const regex2 =
-          /<wpt lat="([^"]+)" lon="([^"]+)">\s*<ele>([^<]+)<\/ele>\s*<name>([^<]+)<\/name>\s*<cmt>([^<]+)<\/cmt>\s*<desc>([^<]+)<\/desc>/g;
+        const regexCheckPoints =
+          /<wpt lat="([^"]+)" lon="([^"]+)">\s*<ele>([^<]+)<\/ele>\s*<name>([^<]+)<\/name>/g;
 
         let match;
-        const points = [];
-        const points2 = [];
+        let points = [];
+        let points2 = [];
+
         while ((match = regex.exec(gpxText)) !== null) {
           points.push({
             latitude: parseFloat(match[1]),
             longitude: parseFloat(match[2]),
           });
         }
-        while ((match = regex2.exec(gpxText)) !== null) {
+
+        while ((match = regexCheckPoints.exec(gpxText)) !== null) {
           points2.push({
             latitude: parseFloat(match[1]),
             longitude: parseFloat(match[2]),
             name: match[4],
-            cmt: match[5],
-            desc: match[6],
           });
-        }        
+        }
+
         setPoints(points);
-        setPoints2(points2);
+        setPointsCheckPoint(points2);
       } catch (error) {
         console.error("Kesalahan saat menguraikan file GPX", error);
       }
@@ -167,14 +167,17 @@ export default function App() {
     parseGPX();
   }, []);
 
+  // Fetch Location User
   useEffect(() => {
     const fetchLocations = async () => {
       try {
-        const response = await axios.get('http://192.168.18.254:5000/v1/locations');
-        //console.log(response.data);
+        const response = await axios.get(
+          "http://192.168.0.110:50052/v1/locations"
+        );
+        console.log(response.data);
         setLocations(response.data);
       } catch (error) {
-        console.error('Kesalahan saat mengambil data lokasi:', error);
+        console.error("Kesalahan saat mengambil data lokasi:", error);
       }
     };
 
@@ -182,7 +185,7 @@ export default function App() {
 
     const interval = setInterval(() => {
       fetchLocations();
-    }, 5000);
+    }, 60000);
 
     return () => clearInterval(interval);
   }, []);
@@ -195,8 +198,8 @@ export default function App() {
           latitude: location.latitude,
           longitude: location.longitude,
         }}
-        icon={require('../assets/favicon.png')}
-        anchor={{ x: 0.1, y: 0.1 }} 
+        icon={require("../assets/favicon.png")}
+        anchor={{ x: 0.1, y: 0.1 }}
       />
     ));
 
@@ -214,66 +217,65 @@ export default function App() {
         <Appbar.Action icon="headset" onPress={showModal} />
       </Appbar.Header>
       {location ? (
-      <MapView
-        style={styles.map}
-        initialRegion={{
-          latitude: location.coords.latitude- 0.008,
-          longitude: location.coords.longitude,
-          latitudeDelta: 0.0122,
-          longitudeDelta: 0.0121,
-        }}
-      >
-        {points.length > 0 && (
-          <Polyline
-            coordinates={points}
-            strokeColor="#027015"
-            strokeWidth={5}
-          />
-        )}
-        {points2.length > 0 && (
-          points2.map((point, index) => (
-            <Marker
-              key={index}
-              coordinate={{
-                latitude: point.latitude,
-                longitude: point.longitude,
-              }}
-              onPress={() => setSelectedMarker(point.name + " | " + point.cmt + "\n" + point.desc)}
-            >
-              {selectedMarker && (
-                <Callout>
-                  <Text>{selectedMarker}</Text>
-                </Callout>
-              )}
-            </Marker>
-          ))
-        )}
-        {points.length > 0 && (
-          points.filter(point => point.name).map((point, index) => (
-            <Marker
-              key={index}
-              coordinate={{
-                latitude: point.latitude,
-                longitude: point.longitude,
-              }}
-              title={point.name}
-              description={point.cmt + "\n" + point.desc}
+        <MapView
+          style={styles.map}
+          initialRegion={{
+            latitude: location.coords.latitude - 0.008,
+            longitude: location.coords.longitude,
+            latitudeDelta: 0.0122,
+            longitudeDelta: 0.0121,
+          }}
+        >
+          {points.length > 0 && (
+            <Polyline
+              coordinates={points}
+              strokeColor="#027015"
+              strokeWidth={5}
             />
-          ))
-        )}
-        {markers}
-         <Marker
+          )}
+          {pointsCheck.length > 0 &&
+            pointsCheck.map((point, index) => (
+              <Marker
+                key={index}
+                coordinate={{
+                  latitude: point.latitude,
+                  longitude: point.longitude,
+                }}
+                onPress={() => setSelectedMarker(point.name)}
+              >
+                {selectedMarker && (
+                  <Callout>
+                    <Text>{selectedMarker}</Text>
+                  </Callout>
+                )}
+              </Marker>
+            ))}
+          {points.length > 0 &&
+            points
+              .filter((point) => point.name)
+              .map((point, index) => (
+                <Marker
+                  key={index}
+                  coordinate={{
+                    latitude: point.latitude,
+                    longitude: point.longitude,
+                  }}
+                  title={point.name}
+                />
+              ))}
+          {markers}
+          <Marker
             coordinate={{
               latitude: location.coords.latitude,
               longitude: location.coords.longitude,
             }}
-            icon={require('../assets/favicon.png')}
-            anchor={{ x: 0.1, y: 0.1 }} 
+            icon={require("../assets/favicon.png")}
+            anchor={{ x: 0.1, y: 0.1 }}
           />
-      </MapView>
-    ) : (
-      <Text>Loading...</Text>
-    )}
+        </MapView>
+      ) : (
+        <Text>Loading...</Text>
+      )}
       <BottomSheets styles={styles} />
     </SafeAreaView>
   );

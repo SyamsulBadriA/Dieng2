@@ -13,17 +13,40 @@ import {
 const LoginScreen = ({ navigation }) => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [category, setCategory] = useState("10km");
 
   const handleLogin = () => {
-    if (username === "" && password === "") {
-      if (category === "20km") {
-        navigation.navigate("20km");
-      } else if (category === "10km") {
-        navigation.navigate("10km");
+    const data = { username: username, password: password };
+    // console.log(data);
+    fetch('https://dev.diengcalderarace.com/api/login', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+    })
+    .then(response => {
+        return response.json();
+    })
+    .then(data => {
+        // console.log(data);
+        if (data.status === "success") {
+          navigation.navigate("10km",{ user: data.data });
+      } else {
+          alert('Login failed');
       }
-    }
-  };
+  })
+    .catch(error => {
+        console.error('There was an error!', error);
+        alert('Login failed');
+    });
+};
+
+  
+
+  const handleComittee = () => {
+    navigation.navigate("20km");
+  }
+  
 
   const handleRegister = () => {
     Linking.openURL("https://diengcalderarace.com/register");
@@ -81,6 +104,13 @@ const LoginScreen = ({ navigation }) => {
       >
         <Text style={styles.buttonTextRegister}>Register</Text>
       </TouchableOpacity>
+      <TouchableOpacity
+        activeOpacity={0.8}
+        style={styles.buttonComittee}
+        onPress={handleComittee}
+      >
+        <Text style={styles.buttonTextRegister}>Login US Committee</Text>
+      </TouchableOpacity>
       {/* </View> */}
     </ImageBackground>
   );
@@ -118,6 +148,14 @@ const styles = StyleSheet.create({
     width: "100%",
     backgroundColor: "white",
     padding: 15,
+    borderRadius: 10,
+    alignItems: "center",
+  },
+  buttonComittee: {
+    width: "100%",
+    backgroundColor: "white",
+    padding: 15,
+    marginTop:25,
     borderRadius: 10,
     alignItems: "center",
   },

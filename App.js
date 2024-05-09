@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, createContext } from "react";
 import { NavigationContainer } from "@react-navigation/native";
 import { createStackNavigator } from "@react-navigation/stack";
 import WelcomeScreen from "./screen/Welcome";
@@ -11,48 +11,46 @@ import { PaperProvider } from "react-native-paper";
 
 const Stack = createStackNavigator();
 
+export const UserContext = createContext(null);
+
 const App = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [userData, setUserData] = useState(null);
 
-  const handleLogin = () => {
+  const handleLogin = (user, photo) => {
+    setUserData({ user, photo });
     setIsLoggedIn(true);
-  };
-
-  const handleLogout = () => {
-    setIsLoggedIn(false);
   };
 
   return (
     <PaperProvider>
       <GestureHandlerRootView style={{ flex: 1 }}>
-        <NavigationContainer>
-          <Stack.Navigator initialRouteName={isLoggedIn ? "Welcome" : "Login"}>
-            <Stack.Screen
-              name="Login"
-              component={LoginScreen}
-              options={{ headerShown: false }}
-            />
-            <Stack.Screen name="Welcome">
-              {(props) => (
-                <WelcomeScreen
-                  {...props}
-                  onLogout={handleLogout}
-                  options={{ headerShown: false }}
-                />
-              )}
-            </Stack.Screen>
-            <Stack.Screen
-              name="10km"
-              component={Screen10km}
-              options={{ headerShown: false }}
-            />
-            <Stack.Screen
-              name="20km"
-              component={Screen20km}
-              options={{ headerShown: false }}
-            />
-          </Stack.Navigator>
-        </NavigationContainer>
+        <UserContext.Provider value={{ userData, handleLogin }}>
+          <NavigationContainer>
+            <Stack.Navigator initialRouteName={isLoggedIn ? "Welcome" : "Login"}>
+              <Stack.Screen
+                name="Login"
+                component={LoginScreen}
+                options={{ headerShown: false }}
+              />
+              <Stack.Screen
+                name="Welcome"
+                component={WelcomeScreen}
+                options={{ headerShown: false }}
+              />
+              <Stack.Screen
+                name="10km"
+                component={Screen10km}
+                options={{ headerShown: false }}
+              />
+              <Stack.Screen
+                name="20km"
+                component={Screen20km}
+                options={{ headerShown: false }}
+              />
+            </Stack.Navigator>
+          </NavigationContainer>
+        </UserContext.Provider>
       </GestureHandlerRootView>
     </PaperProvider>
   );
