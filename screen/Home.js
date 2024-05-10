@@ -5,36 +5,38 @@ import { Appbar } from "react-native-paper";
 import BottomSheets from "../components/BottomSheets";
 import ContactSupport from "../components/ContactSupport";
 import * as Location from "expo-location";
-import axios from "axios";
 import * as TaskManager from "expo-task-manager";
+import { BASE_URL, sendLocation } from "../api/api";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
-const sendTrackingData = async (data) => {
-  try {
-    const response = await axios.post(
-      "http://192.168.0.110:50052/v1/submit",
-      data
-    );
-    console.log(response.data);
-  } catch (error) {
-    console.error("Kesalahan saat mengirim data tracking:", error);
-  }
-};
+const LOCATION_TASK_NAME = "background-location-task";
 
 export default function App({ route }) {
   const { user, photo } = route.params;
-  console.log(user);
   const [points, setPoints] = useState([]);
   const [pointsCheck, setPointsCheckPoint] = useState([]);
   const [visible, setVisible] = useState(false);
   const [selectedMarker, setSelectedMarker] = useState(null);
-  const [location, setLocation] = useState(null);
+  const [currentLocation, setCurrentLocation] = useState(null);
   const [errorMsg, setErrorMsg] = useState(null);
   const [locations, setLocations] = useState([]);
   const [isGranted, setIsGranted] = useState(false);
-  const [categoryGpx, setCategoryGpx] = useState("75_km");
   const [markers, setMarkers] = useState([]);
+
+  TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }) => {
+    if (error) {
+      console.error("Error in background task:", error.message);
+      return;
+    }
+
+    if (data) {
+      const { locations } = data;
+      console.log("Background locations:", locations);
+      const location = locations[0];
+      await sendLocation(location, user);
+    }
+  });
 
   const showModal = () => setVisible(() => !visible);
 
@@ -54,15 +56,44 @@ export default function App({ route }) {
       }
     };
 
-    const getCurrentLocation = async () => {
+    const startBackgroundUpdatesLocation = async () => {
       try {
         if (!isGranted) {
           setErrorMsg("Izin lokasi ditolak");
         }
 
+        await Location.startLocationUpdatesAsync(LOCATION_TASK_NAME, {
+          accuracy: Location.Accuracy.High,
+          timeInterval: 10 * 1000,
+          distanceInterval: 10,
+          foregroundService: {
+            notificationTitle: "Location updates enabled",
+            notificationBody: "Tracking your location",
+          },
+        });
+      } catch (error) {
+        console.error("Error starting location updates:", error);
+        setErrorMsg("Error starting location updates");
+      }
+    };
+
+    getRequestPermission();
+    startBackgroundUpdatesLocation();
+
+    return () => {
+      Location.stopLocationUpdatesAsync(LOCATION_TASK_NAME);
+    };
+  }, []);
+
+  useEffect(() => {
+    const getAndSendCurrentLocation = async () => {
+      try {
+        if (!isGranted) {
+          setErrorMsg("Izin lokasi ditolak");
+        }
         let location = await Location.getCurrentPositionAsync({});
-        console.log(location);
-        setLocation(location);
+        await sendLocation(location, user);
+        setCurrentLocation(location);
         setErrorMsg(null);
       } catch (error) {
         console.error("Kesalahan saat mendapatkan lokasi:", error);
@@ -70,35 +101,11 @@ export default function App({ route }) {
       }
     };
 
-    const getAndSendLocation = async () => {
-      try {
-        if (!isGranted) {
-          setErrorMsg("Izin lokasi ditolak");
-        }
+    const interval = setInterval(() => {
+      getAndSendCurrentLocation();
+    }, 10000);
 
-        if (location != null) {
-          sendTrackingData({
-            latitude: location.coords.latitude,
-            longitude: location.coords.longitude,
-            altitude: location.coords.altitude,
-            category: "75_km",
-            email: "viomokalu@gmail.com",
-            fullname: "Lovelyo",
-          });
-        }
-      } catch (error) {
-        console.error("Kesalahan saat mendapatkan lokasi:", error);
-        setErrorMsg("Kesalahan saat mendapatkan lokasi");
-      }
-    };
-
-    getRequestPermission();
-    getCurrentLocation();
-    getAndSendLocation();
-
-    return () => {
-      Location.stopLocationUpdatesAsync(LOCATION_TASK_NAME);
-    };
+    return () => clearInterval(interval);
   }, []);
 
   // Parsing GPX
@@ -107,25 +114,25 @@ export default function App({ route }) {
       try {
         let categoryValue = "";
 
-        switch (categoryGpx) {
-          case "10_km":
-            categoryValue = "10 KM_TAMBI.gpx";
+        switch (user.id_category) {
+          case "10":
+            categoryValue = "10KM_DCR.gpx";
             break;
 
-          case "21_km":
-            categoryValue = "21KM_TAMBI.gpx";
+          case "21":
+            categoryValue = "21KM_DCR.gpx";
             break;
 
-          case "42_km":
-            categoryValue = "42KM_TAMBI.gpx";
+          case "42":
+            categoryValue = "42KM_DCR.gpx";
             break;
 
-          case "75_km":
-            categoryValue = "75KM_TAMBI.gpx";
+          case "75":
+            categoryValue = "75KM_DCR.gpx";
             break;
 
           default:
-            categoryValue = "10 KM_TAMBI.gpx";
+            categoryValue = "10KM_DCR.gpx";
             break;
         }
 
@@ -171,11 +178,11 @@ export default function App({ route }) {
   useEffect(() => {
     const fetchLocations = async () => {
       try {
-        const response = await axios.get(
-          "http://192.168.0.110:50052/v1/locations"
+        const response = await fetch(
+          `${BASE_URL}/api/locations?category=${user.id_category}_km`
         );
-        console.log(response.data);
-        setLocations(response.data);
+        const dataRes = await response.json();
+        setLocations(dataRes.data);
       } catch (error) {
         console.error("Kesalahan saat mengambil data lokasi:", error);
       }
@@ -191,19 +198,24 @@ export default function App({ route }) {
   }, []);
 
   useEffect(() => {
-    const markers = locations.map((location, index) => (
-      <Marker
-        key={index}
-        coordinate={{
-          latitude: location.latitude,
-          longitude: location.longitude,
-        }}
-        icon={require("../assets/favicon.png")}
-        anchor={{ x: 0.1, y: 0.1 }}
-      />
-    ));
-
-    setMarkers(markers);
+    if (locations) {
+      const markers = locations.map((loc, index) => {
+        if (loc.email != user.email) {
+          return (
+            <Marker
+              key={index}
+              coordinate={{
+                latitude: parseFloat(loc.latitude),
+                longitude: parseFloat(loc.longitude),
+              }}
+              icon={require("../assets/favicon.png")}
+              anchor={{ x: 0.1, y: 0.1 }}
+            />
+          );
+        }
+      });
+      setMarkers(markers);
+    }
   }, [locations]);
 
   return (
@@ -216,12 +228,12 @@ export default function App({ route }) {
         />
         <Appbar.Action icon="headset" onPress={showModal} />
       </Appbar.Header>
-      {location ? (
+      {currentLocation ? (
         <MapView
           style={styles.map}
           initialRegion={{
-            latitude: location.coords.latitude - 0.008,
-            longitude: location.coords.longitude,
+            latitude: currentLocation.coords.latitude - 0.008,
+            longitude: currentLocation.coords.longitude,
             latitudeDelta: 0.0122,
             longitudeDelta: 0.0121,
           }}
@@ -266,8 +278,8 @@ export default function App({ route }) {
           {markers}
           <Marker
             coordinate={{
-              latitude: location.coords.latitude,
-              longitude: location.coords.longitude,
+              latitude: currentLocation.coords.latitude,
+              longitude: currentLocation.coords.longitude,
             }}
             icon={require("../assets/favicon.png")}
             anchor={{ x: 0.1, y: 0.1 }}

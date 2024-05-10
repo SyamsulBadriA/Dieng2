@@ -9,44 +9,53 @@ import {
   ImageBackground,
   Linking,
 } from "react-native";
+import { BASE_URL } from "../api/api";
 
 const LoginScreen = ({ navigation }) => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
 
-  const handleLogin = () => {
-    const data = { username: username, password: password };
-    // console.log(data);
-    fetch('https://dev.diengcalderarace.com/api/login', {
-        method: 'POST',
+  const getUserProfile = async () => {
+    try {
+      const res = await fetch(`${BASE_URL}/api/profile/1042`);
+      const data = await res.json();
+      console.log(data.data);
+      return data.data;
+    } catch (error) {
+      console.error("Kesalahan saat mendapatkan profil:", error);
+      return error;
+    }
+  };
+
+  const handleLogin = async () => {
+    try {
+      const data = { username: username, password: password };
+
+      const response = await fetch(`${BASE_URL}/api/login`, {
+        method: "POST",
         headers: {
-            'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify(data),
-    })
-    .then(response => {
-        return response.json();
-    })
-    .then(data => {
-        // console.log(data);
-        if (data.status === "success") {
-          navigation.navigate("10km",{ user: data.data });
-      } else {
-          alert('Login failed');
-      }
-  })
-    .catch(error => {
-        console.error('There was an error!', error);
-        alert('Login failed');
-    });
-};
+      });
 
-  
+      const resJson = await response.json();
+      if (resJson.status == "success") {
+        const user = await getUserProfile();
+        if (user) {
+          navigation.navigate("10km", { user });
+        }
+      } else {
+        alert(resJson.message);
+      }
+    } catch (error) {
+      alert("Login failed", error);
+    }
+  };
 
   const handleComittee = () => {
-    navigation.navigate("20km");
-  }
-  
+    navigation.navigate("LoginComittee");
+  };
 
   const handleRegister = () => {
     Linking.openURL("https://diengcalderarace.com/register");
@@ -92,7 +101,7 @@ const LoginScreen = ({ navigation }) => {
       <TouchableOpacity
         activeOpacity={0.8}
         style={styles.button}
-        onPress={handleLogin}
+        onPress={() => handleLogin()}
       >
         <Text style={styles.buttonText}>Login</Text>
       </TouchableOpacity>
@@ -109,7 +118,7 @@ const LoginScreen = ({ navigation }) => {
         style={styles.buttonComittee}
         onPress={handleComittee}
       >
-        <Text style={styles.buttonTextRegister}>Login US Committee</Text>
+        <Text style={styles.buttonTextRegister}>Login as Committee</Text>
       </TouchableOpacity>
       {/* </View> */}
     </ImageBackground>
@@ -155,7 +164,7 @@ const styles = StyleSheet.create({
     width: "100%",
     backgroundColor: "white",
     padding: 15,
-    marginTop:25,
+    marginTop: 25,
     borderRadius: 10,
     alignItems: "center",
   },

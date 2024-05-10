@@ -9,12 +9,13 @@ import {
   ImageBackground,
   Linking,
 } from "react-native";
-import DropdownComittee from "../components/dropdowncomittee";
-const LoginScreen = ({ navigation }) => {
+import DropdownComittee from "../components/DropdownComittee";
+
+const LoginComitteeScreen = ({ navigation }) => {
   const [participant, setParticipant] = useState("");
   const [selectedCommittee, setSelectedCommittee] = useState(null);
 
-  const handleRegister = () => {
+  const handleSubmit = () => {
     Linking.openURL("https://diengcalderarace.com/register");
   };
 
@@ -28,9 +29,9 @@ const LoginScreen = ({ navigation }) => {
         style={{ width: 300, height: 100 }}
       />
       <Text style={styles.title}>Check Point</Text>
-      <DropdownComittee 
-        styles={styles}  
-        onSelectCommittee={value => {
+      <DropdownComittee
+        styles={styles}
+        onSelectCommittee={(value) => {
           setSelectedCommittee(value);
           console.log("Nilai yang dipilih dari dropdown:", value);
         }}
@@ -42,15 +43,14 @@ const LoginScreen = ({ navigation }) => {
         onChangeText={setParticipant}
         editable={true}
       />
-    
+
       <TouchableOpacity
         activeOpacity={0.8}
-        style={styles.buttonRegister}
-        onPress={handleRegister}
+        style={styles.buttonSubmit}
+        onPress={handleSubmit}
       >
-        <Text style={styles.buttonTextRegister}>Register</Text>
+        <Text style={styles.buttonTextSubmit}>Submit</Text>
       </TouchableOpacity>
-  
     </ImageBackground>
   );
 };
@@ -83,7 +83,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     alignItems: "center",
   },
-  buttonRegister: {
+  buttonSubmit: {
     width: "100%",
     backgroundColor: "white",
     padding: 15,
@@ -94,7 +94,7 @@ const styles = StyleSheet.create({
     width: "100%",
     backgroundColor: "white",
     padding: 15,
-    marginTop:25,
+    marginTop: 25,
     borderRadius: 10,
     alignItems: "center",
   },
@@ -110,10 +110,10 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 18,
   },
-  buttonTextRegister: {
+  buttonTextSubmit: {
     color: "black",
     fontSize: 18,
   },
 });
 
-export default LoginScreen;
+export default LoginComitteeScreen;

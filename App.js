@@ -3,8 +3,8 @@ import { NavigationContainer } from "@react-navigation/native";
 import { createStackNavigator } from "@react-navigation/stack";
 import WelcomeScreen from "./screen/Welcome";
 import LoginScreen from "./screen/Login";
-import Screen10km from "./screen/10km";
-import Screen20km from "./screen/20km";
+import Home from "./screen/Home";
+import LoginComittee from "./screen/LoginComittee";
 import "react-native-gesture-handler";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { PaperProvider } from "react-native-paper";
@@ -27,7 +27,9 @@ const App = () => {
       <GestureHandlerRootView style={{ flex: 1 }}>
         <UserContext.Provider value={{ userData, handleLogin }}>
           <NavigationContainer>
-            <Stack.Navigator initialRouteName={isLoggedIn ? "Welcome" : "Login"}>
+            <Stack.Navigator
+              initialRouteName={isLoggedIn ? "Welcome" : "Login"}
+            >
               <Stack.Screen
                 name="Login"
                 component={LoginScreen}
@@ -40,12 +42,12 @@ const App = () => {
               />
               <Stack.Screen
                 name="10km"
-                component={Screen10km}
+                component={Home}
                 options={{ headerShown: false }}
               />
               <Stack.Screen
-                name="20km"
-                component={Screen20km}
+                name="LoginComittee"
+                component={LoginComittee}
                 options={{ headerShown: false }}
               />
             </Stack.Navigator>
