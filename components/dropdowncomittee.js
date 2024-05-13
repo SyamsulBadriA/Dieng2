@@ -11,7 +11,7 @@ import React, { useState } from 'react';
   ];
 
   
-  const DropdownComponent = () => {
+  const DropdownComponent = ({ onSelect }) => {
     const [value, setValue] = useState(null);
     const [isFocus, setIsFocus] = useState(false);
 
@@ -45,10 +45,10 @@ import React, { useState } from 'react';
           value={value}
           onFocus={() => setIsFocus(true)}
           onBlur={() => setIsFocus(false)}
-          onChange={item => {
+          onChange={(item) => {
             setValue(item.value);
             setIsFocus(false);
-            // console.log("Nilai => ", item.value); 
+            onSelect && onSelect(item.value);
         }}
         renderSelectedItem={() => (
             <View style={styles.selectedItem}>

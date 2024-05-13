@@ -6,7 +6,8 @@ import * as Progress from "react-native-progress";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("screen");
 
-const BottomSheets = ({ styles }) => {
+const BottomSheets = ({ styles, firstName }) => {
+  console.log("firstName:", firstName);
   return (
     <View style={styles.bottomSheet}>
       <View style={styles.line} />
@@ -15,7 +16,7 @@ const BottomSheets = ({ styles }) => {
           <Avatar.Image source={require("../assets/icon.png")} />
           <View style={styles.profileText}>
             <Text style={{ fontSize: 16, fontWeight: "bold" }}>
-              Lovelyo Yeremia
+              {firstName}
             </Text>
             <Text>10 km . 90 min</Text>
           </View>

@@ -9,7 +9,7 @@ import {
   ImageBackground,
   Linking,
 } from "react-native";
-import DropdownComittee from "../components/DropdownComittee";
+import DropdownComittee from "../components/dropdowncomittee";
 
 const LoginComitteeScreen = ({ navigation }) => {
   const [participant, setParticipant] = useState("");
@@ -21,7 +21,7 @@ const LoginComitteeScreen = ({ navigation }) => {
 
   return (
     <ImageBackground
-      source={require("../assets/background.jpg")}
+      source={require("../assets/background 2.png")}
       style={styles.container}
     >
       <Image
@@ -31,19 +31,27 @@ const LoginComitteeScreen = ({ navigation }) => {
       <Text style={styles.title}>Check Point</Text>
       <DropdownComittee
         styles={styles}
-        onSelectCommittee={(value) => {
+        onSelect={(value) => {
           setSelectedCommittee(value);
-          console.log("Nilai yang dipilih dari dropdown:", value);
+          console.log("Item yang dipilih:", value);
         }}
       />
-      <TextInput
+      {/* <TextInput
         style={styles.input}
         placeholder="Participant"
         value={participant}
-        onChangeText={setParticipant}
+        onChangeText={setSelectedCommittee}
         editable={true}
-      />
-
+      /> */}
+      <View style={styles.inputContainer}>
+        <Text style={styles.prefix}>{selectedCommittee}</Text>
+        <TextInput
+          placeholder="No Runner"
+          keyboardType="number-pad"
+          underlineColorAndroid="transparent"
+          onChangeText={(mobile_number) => this.setState({ mobile_number })}
+        />
+      </View>
       <TouchableOpacity
         activeOpacity={0.8}
         style={styles.buttonSubmit}
@@ -62,6 +70,24 @@ const styles = StyleSheet.create({
     alignItems: "center",
     padding: 25,
     backgroundColor: "#f5f5f5",
+  },
+  inputContainer: {
+    borderWidth: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "white",
+    marginHorizontal: 10,
+    borderRadius: 10,
+    backgroundColor: "#fff",
+    padding: 15,
+    width: "100%",
+    marginBottom: 10,
+    borderRadius: 10,
+  },
+  prefix: {
+    paddingHorizontal: 10,
+    fontWeight: "bold",
+    color: "black",
   },
   title: {
     fontSize: 24,

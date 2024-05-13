@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -10,10 +10,40 @@ import {
   Linking,
 } from "react-native";
 import { BASE_URL } from "../api/api";
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Location from 'expo-location';
 
 const LoginScreen = ({ navigation }) => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+
+  useEffect(() => {
+    checkPermissions();
+  }, []);
+
+  const checkPermissions = async () => {
+    try {
+      let { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert(
+          "Permission required",
+          "This app needs location permission to function properly.",
+          [{ text: "OK", onPress: () => {} }]
+        );
+      }
+  
+      let storagePermission = await Location.requestForegroundPermissionsAsync();
+      if (storagePermission.status !== "granted") {
+        Alert.alert(
+          "Permission required",
+          "This app needs storage permission to function properly.",
+          [{ text: "OK", onPress: () => {} }]
+        );
+      }
+    } catch (error) {
+      console.error("Error checking permissions:", error);
+    }
+  };
 
   const getUserProfile = async () => {
     try {
@@ -30,7 +60,7 @@ const LoginScreen = ({ navigation }) => {
   const handleLogin = async () => {
     try {
       const data = { username: username, password: password };
-
+  
       const response = await fetch(`${BASE_URL}/api/login`, {
         method: "POST",
         headers: {
@@ -38,9 +68,10 @@ const LoginScreen = ({ navigation }) => {
         },
         body: JSON.stringify(data),
       });
-
+  
       const resJson = await response.json();
       if (resJson.status == "success") {
+        await AsyncStorage.setItem('isLoggedIn', 'true'); 
         const user = await getUserProfile();
         if (user) {
           navigation.navigate("10km", { user });
@@ -67,7 +98,7 @@ const LoginScreen = ({ navigation }) => {
 
   return (
     <ImageBackground
-      source={require("../assets/background.jpg")}
+      source={require("../assets/background 2.png")}
       style={styles.container}
     >
       {/* <View style={styles.container}> */}

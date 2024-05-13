@@ -13,7 +13,7 @@ const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 const LOCATION_TASK_NAME = "background-location-task";
 
 export default function App({ route }) {
-  const { user, photo } = route.params;
+  const { user } = route.params;
   const [points, setPoints] = useState([]);
   const [pointsCheck, setPointsCheckPoint] = useState([]);
   const [visible, setVisible] = useState(false);
@@ -39,7 +39,20 @@ export default function App({ route }) {
   });
 
   const showModal = () => setVisible(() => !visible);
-
+  const shootLocation = async () => {
+    try {
+      let location = await Location.getCurrentPositionAsync({
+        latitude: -7.353126,
+        longitude: 109.906090,
+      });
+      console.log("Location shot:", location);
+    } catch (error) {
+      console.error("Error shooting location:", error);
+    }
+  };
+  
+  shootLocation();
+  
   // Location Services
   useEffect(() => {
     const getRequestPermission = async () => {
@@ -49,13 +62,20 @@ export default function App({ route }) {
           setErrorMsg("Izin lokasi ditolak");
           return;
         }
+    
+        let backgroundStatus = await Location.requestBackgroundPermissionsAsync();
+        if (backgroundStatus.status !== "granted") {
+          setErrorMsg("Izin lokasi latar belakang ditolak");
+          return;
+        }
+    
         setIsGranted(true);
         setErrorMsg(null);
       } catch (error) {
         setErrorMsg(error);
       }
     };
-
+    
     const startBackgroundUpdatesLocation = async () => {
       try {
         if (!isGranted) {
@@ -208,7 +228,7 @@ export default function App({ route }) {
                 latitude: parseFloat(loc.latitude),
                 longitude: parseFloat(loc.longitude),
               }}
-              icon={require("../assets/favicon.png")}
+              icon={require("../assets/point.png")}
               anchor={{ x: 0.1, y: 0.1 }}
             />
           );
@@ -231,6 +251,9 @@ export default function App({ route }) {
       {currentLocation ? (
         <MapView
           style={styles.map}
+          followsUserLocation={true}
+          showsUserLocation={true}
+          // padding={{ top: 0, right: 0, bottom: SCREEN_HEIGHT / 2, left: 0 }}
           initialRegion={{
             latitude: currentLocation.coords.latitude - 0.008,
             longitude: currentLocation.coords.longitude,
@@ -276,19 +299,19 @@ export default function App({ route }) {
                 />
               ))}
           {markers}
-          <Marker
+          {/* <Marker
             coordinate={{
               latitude: currentLocation.coords.latitude,
               longitude: currentLocation.coords.longitude,
             }}
-            icon={require("../assets/favicon.png")}
+            icon={require("../assets/point (2).png")}
             anchor={{ x: 0.1, y: 0.1 }}
-          />
+          /> */}
         </MapView>
       ) : (
         <Text>Loading...</Text>
       )}
-      <BottomSheets styles={styles} />
+      <BottomSheets styles={styles} firstName={user ? user.first_name : ''} />
     </SafeAreaView>
   );
 }

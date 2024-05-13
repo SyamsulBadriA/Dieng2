@@ -4,12 +4,12 @@
     "slug": "dieng",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/Group.png",
     "userInterfaceStyle": "light",
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#10385B"
     },
     "assetBundlePatterns": [
       "assets/*",
@@ -20,12 +20,18 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
-      }
+        "foregroundImage": "./assets/Group.png",
+        "backgroundColor": "#10385B"
+      },
+      "package": "com.uzumaki12.dieng"
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/logo-white.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "bf6d6cc2-cd4c-4223-86ef-22305c4434d2"
+      }
     }
   }
 }
