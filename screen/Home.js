@@ -1,16 +1,42 @@
 import React, { useEffect, useState } from "react";
 import { Dimensions, SafeAreaView, StyleSheet, Text } from "react-native";
-import MapView, { Marker, Polyline, Callout, Circle } from "react-native-maps";
+import MapView, { Marker, Polyline, Callout } from "react-native-maps";
 import { Appbar } from "react-native-paper";
 import BottomSheets from "../components/BottomSheets";
 import ContactSupport from "../components/ContactSupport";
 import * as Location from "expo-location";
 import * as TaskManager from "expo-task-manager";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { BASE_URL, sendLocation } from "../api/api";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
 const LOCATION_TASK_NAME = "background-location-task";
+
+TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }) => {
+  if (error) {
+    console.error("Error in background task:", error.message);
+    return;
+  }
+
+  if (data) {
+    const { locations } = data;
+    console.log("Background locations:", locations);
+    const location = locations[0];
+
+    try {
+      const user = await AsyncStorage.getItem("user");
+      if (user) {
+        const parsedUser = JSON.parse(user);
+        await sendLocation(location, parsedUser);
+      } else {
+        console.error("No user data found in AsyncStorage");
+      }
+    } catch (error) {
+      console.error("Error retrieving user from AsyncStorage:", error);
+    }
+  }
+});
 
 export default function App({ route }) {
   const { user } = route.params;
@@ -24,21 +50,8 @@ export default function App({ route }) {
   const [isGranted, setIsGranted] = useState(false);
   const [markers, setMarkers] = useState([]);
 
-  TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }) => {
-    if (error) {
-      console.error("Error in background task:", error.message);
-      return;
-    }
-
-    if (data) {
-      const { locations } = data;
-      console.log("Background locations:", locations);
-      const location = locations[0];
-      await sendLocation(location, user);
-    }
-  });
-
   const showModal = () => setVisible(() => !visible);
+
   const shootLocation = async () => {
     try {
       let location = await Location.getCurrentPositionAsync({
@@ -50,10 +63,21 @@ export default function App({ route }) {
       console.error("Error shooting location:", error);
     }
   };
-  
+
   shootLocation();
-  
-  // Location Services
+
+  useEffect(() => {
+    const saveUserToStorage = async () => {
+      try {
+        await AsyncStorage.setItem("user", JSON.stringify(user));
+      } catch (error) {
+        console.error("Error saving user to AsyncStorage:", error);
+      }
+    };
+
+    saveUserToStorage();
+  }, [user]);
+
   useEffect(() => {
     const getRequestPermission = async () => {
       try {
@@ -62,54 +86,65 @@ export default function App({ route }) {
           setErrorMsg("Izin lokasi ditolak");
           return;
         }
-    
+
         let backgroundStatus = await Location.requestBackgroundPermissionsAsync();
         if (backgroundStatus.status !== "granted") {
           setErrorMsg("Izin lokasi latar belakang ditolak");
           return;
         }
-    
+
         setIsGranted(true);
         setErrorMsg(null);
       } catch (error) {
         setErrorMsg(error);
       }
     };
-    
+
     const startBackgroundUpdatesLocation = async () => {
       try {
         if (!isGranted) {
           setErrorMsg("Izin lokasi ditolak");
+          return;
         }
 
-        await Location.startLocationUpdatesAsync(LOCATION_TASK_NAME, {
-          accuracy: Location.Accuracy.High,
-          timeInterval: 10 * 1000,
-          distanceInterval: 10,
-          foregroundService: {
-            notificationTitle: "Location updates enabled",
-            notificationBody: "Tracking your location",
-          },
-        });
+        const isRegistered = await TaskManager.isTaskRegisteredAsync(LOCATION_TASK_NAME);
+
+        if (!isRegistered) {
+          await Location.startLocationUpdatesAsync(LOCATION_TASK_NAME, {
+            accuracy: Location.Accuracy.High,
+            timeInterval: 10 * 1000,
+            distanceInterval: 10,
+            foregroundService: {
+              notificationTitle: "Location updates enabled",
+              notificationBody: "Tracking your location",
+            },
+          });
+        }
       } catch (error) {
         console.error("Error starting location updates:", error);
         setErrorMsg("Error starting location updates");
       }
     };
 
-    getRequestPermission();
-    startBackgroundUpdatesLocation();
+    getRequestPermission().then(startBackgroundUpdatesLocation);
 
     return () => {
-      Location.stopLocationUpdatesAsync(LOCATION_TASK_NAME);
+      Location.hasStartedLocationUpdatesAsync(LOCATION_TASK_NAME)
+        .then((isStarted) => {
+          if (isStarted) {
+            return Location.stopLocationUpdatesAsync(LOCATION_TASK_NAME);
+          }
+        })
+        .catch((error) => console.error("Error stopping location updates:", error));
     };
-  }, []);
+  }, [isGranted]);
 
   useEffect(() => {
     const getAndSendCurrentLocation = async () => {
       try {
         if (!isGranted) {
           setErrorMsg("Izin lokasi ditolak");
+          return;
         }
         let location = await Location.getCurrentPositionAsync({});
         await sendLocation(location, user);
@@ -126,9 +161,8 @@ export default function App({ route }) {
     }, 10000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [isGranted]);
 
-  // Parsing GPX
   useEffect(() => {
     const parseGPX = async () => {
       try {
@@ -192,9 +226,8 @@ export default function App({ route }) {
     };
 
     parseGPX();
-  }, []);
+  }, [user.id_category]);
 
-  // Fetch Location User
   useEffect(() => {
     const fetchLocations = async () => {
       try {
@@ -215,12 +248,12 @@ export default function App({ route }) {
     }, 60000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [user.id_category]);
 
   useEffect(() => {
     if (locations) {
       const markers = locations.map((loc, index) => {
-        if (loc.email != user.email) {
+        if (loc.email !== user.email) {
           return (
             <Marker
               key={index}
@@ -236,7 +269,7 @@ export default function App({ route }) {
       });
       setMarkers(markers);
     }
-  }, [locations]);
+  }, [locations, user.email]);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -253,7 +286,6 @@ export default function App({ route }) {
           style={styles.map}
           followsUserLocation={true}
           showsUserLocation={true}
-          // padding={{ top: 0, right: 0, bottom: SCREEN_HEIGHT / 2, left: 0 }}
           initialRegion={{
             latitude: currentLocation.coords.latitude - 0.008,
             longitude: currentLocation.coords.longitude,
@@ -285,28 +317,7 @@ export default function App({ route }) {
                 )}
               </Marker>
             ))}
-          {points.length > 0 &&
-            points
-              .filter((point) => point.name)
-              .map((point, index) => (
-                <Marker
-                  key={index}
-                  coordinate={{
-                    latitude: point.latitude,
-                    longitude: point.longitude,
-                  }}
-                  title={point.name}
-                />
-              ))}
           {markers}
-          {/* <Marker
-            coordinate={{
-              latitude: currentLocation.coords.latitude,
-              longitude: currentLocation.coords.longitude,
-            }}
-            icon={require("../assets/point (2).png")}
-            anchor={{ x: 0.1, y: 0.1 }}
-          /> */}
         </MapView>
       ) : (
         <Text>Loading...</Text>
